@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ニコニコ簡易ビューア</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; }
+    .row { display: flex; gap: .5rem; }
+    input { flex: 1; padding: .6rem; font-size: 16px; }
+    button { padding: .6rem 1rem; }
+    .frame { position: relative; width: 100%; max-width: 900px; margin-top: 1rem; }
+    .ratio { position: relative; width: 100%; padding-bottom: 56.25%; background: #0002; border-radius: 8px; }
+    #mount { position: absolute; inset: 0; }
+    .err { color: #b00; margin-top: .5rem; }
+    .links { margin-top: .25rem; font-size: 14px; }
+    a { color: #0366d6; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>ニコニコ簡易ビューア</h1>
+  <form id="f" class="row">
+    <input id="q" placeholder="https://www.nicovideo.jp/watch/sm9 や sm9 など" />
+    <button type="submit">表示</button>
+  </form>
+  <div class="links" id="links"></div>
+  <div class="err" id="err"></div>
+
+  <div class="frame">
+    <div class="ratio">
+      <div id="mount"></div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('f');
+    const q = document.getElementById('q');
+    const mount = document.getElementById('mount');
+    const err = document.getElementById('err');
+    const links = document.getElementById('links');
+
+    async function renderById(id) {
+      // script方式（公式）：scriptタグを動的に差し込む
+      // 参考: https://embed.nicovideo.jp/watch/{id}/script?w=640&h=360
+      mount.innerHTML = '';
+      const s = document.createElement('script');
+      s.type = 'application/javascript';
+      s.src = `https://embed.nicovideo.jp/watch/${id}/script?w=1280&h=720`;
+      mount.appendChild(s);
+
+      // フォールバック
+      const nos = document.createElement('noscript');
+      const a = document.createElement('a');
+      a.href = `https://www.nicovideo.jp/watch/${id}`;
+      a.textContent = id;
+      nos.appendChild(a);
+      mount.appendChild(nos);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.textContent = '';
+      links.textContent = '';
+      try {
+        const u = new URL(location.origin + '/api/parse');
+        u.searchParams.set('q', q.value.trim());
+        const r = await fetch(u.toString());
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || 'unknown error');
+        await renderById(j.id);
+        links.innerHTML = `
+          <a href="${j.watch}" target="_blank" rel="noreferrer">動画ページ</a> /
+          <a href="${j.iframe}" target="_blank" rel="noreferrer">iframe</a> /
+          <a href="${j.script}" target="_blank" rel="noreferrer">script</a>
+        `;
+        history.replaceState(null, '', '?v=' + encodeURIComponent(j.id));
+        localStorage.setItem('last', j.id);
+      } catch (e2) {
+        err.textContent = e2.message;
+      }
+    });
+
+    // クエリ or 履歴から自動表示
+    (function boot() {
+      const p = new URLSearchParams(location.search);
+      const v = p.get('v') || localStorage.getItem('last');
+      if (v) {
+        q.value = v;
+        form.dispatchEvent(new Event('submit'));
+      }
+    })();
+  </script>
+</body>
+</html>
