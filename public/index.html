@@ -2,47 +2,89 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>ニコニコ簡易ビューア</title>
+  <title>ニコニコ簡易ビューア（ダーク + デモ再生）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- 一部の環境で埋め込みが参照することがある -->
   <meta name="referrer" content="no-referrer-when-downgrade" />
+  <meta name="color-scheme" content="light dark" />
   <style>
-    body { font-family: system-ui, sans-serif; margin: 24px; max-width: 1000px; }
-    h1 { margin-bottom: 12px; }
-    #controls { display: grid; grid-template-columns: 1fr 140px 120px; gap: 8px; }
-    input, select, button { padding: 10px; font-size: 16px; }
-    button { cursor: pointer; }
-    #err { color: #d00; margin-top: 10px; min-height: 1.2em; }
+    :root{
+      --bg:#ffffff; --fg:#0f172a; --muted:#6b7280; --card:#ffffff; --border:#e5e7eb;
+      --accent:#2563eb; --hover:#f8fafc; --thumb-bg:#0b0b0b; --shadow:0 6px 20px rgba(0,0,0,.08);
+    }
+    :root.dark{
+      --bg:#0b0f19; --fg:#e5e7eb; --muted:#9aa4b2; --card:#111827; --border:#1f2937;
+      --accent:#60a5fa; --hover:#0f172a; --thumb-bg:#000; --shadow:0 8px 28px rgba(0,0,0,.35);
+    }
+    @media (prefers-color-scheme:dark){
+      :root:not(.light){
+        --bg:#0b0f19; --fg:#e5e7eb; --muted:#9aa4b2; --card:#111827; --border:#1f2937;
+        --accent:#60a5fa; --hover:#0f172a; --thumb-bg:#000; --shadow:0 8px 28px rgba(0,0,0,.35);
+      }
+    }
 
-    .grid { margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 12px; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 6px; cursor: pointer; transition: .15s; background:#fff; }
-    .card:hover { background: #fafafa; }
-    .thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; display:block; }
-    .meta { margin-top: 6px; font-size: 13px; color:#555; }
+    body{
+      margin:24px; max-width:1000px; margin-inline:auto;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
+      background:var(--bg); color:var(--fg); transition:.2s;
+    }
+    h1{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+    .muted{ color:var(--muted); }
 
-    #player-wrap { margin-top: 28px; }
-    .frame { position: relative; padding-bottom: 56.25%; height: 0; background: #000; border-radius: 10px; overflow: hidden; }
-    #mount { position: absolute; inset: 0; width: 100%; height: 100%; }
-    #links { margin-top: 8px; font-size: 14px; }
-    a { color:#0366d6; text-decoration: none; }
+    #bar{ display:grid; grid-template-columns:1fr 140px 120px auto auto; gap:10px; }
+    input, select, button{
+      padding:10px 12px; border-radius:10px; border:1px solid var(--border);
+      background:var(--card); color:var(--fg); font-size:15px;
+    }
+    button.primary{ background:var(--accent); color:#fff; border:none; cursor:pointer; }
+    button.ghost{ cursor:pointer; background:transparent; border:1px solid var(--border); }
+    #err{ color:#ef4444; margin-top:6px; }
+
+    .grid{ margin-top:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px; }
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:12px;
+      padding:8px; cursor:pointer; transition:.1s; box-shadow:var(--shadow);
+    }
+    .card:hover{ transform:translateY(-2px); background:var(--hover); }
+    .thumb{ width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:10px; background:var(--thumb-bg); }
+    .meta{ margin-top:6px; font-size:13px; color:var(--muted); }
+
+    #player-wrap{ margin-top:28px; }
+    .frame{ position:relative; padding-bottom:56.25%; height:0; background:#000; border-radius:14px; overflow:hidden; box-shadow:var(--shadow); }
+    #mount{ position:absolute; inset:0; }
+
+    #links{ margin-top:8px; font-size:14px; }
+    a{ color:var(--accent); text-decoration:none; }
+    a:hover{text-decoration:underline;}
+
+    @media(max-width:640px){
+      body{ margin:16px; }
+      #bar{ grid-template-columns:1fr auto auto auto auto; }
+    }
   </style>
 </head>
 <body>
 
-<h1>ニコニコ動画 検索ビューア</h1>
+<h1>
+  ニコニコ動画ビューア
+  <span class="muted">ダーク + デモ対応</span>
+  <button id="themeBtn" class="ghost" title="テーマ切替">🌙</button>
+</h1>
 
-<div id="controls">
-  <input id="q" placeholder="例：初音ミク / sm9 など">
+<div id="bar">
+  <input id="q" placeholder="例：sm9 / 初音ミク">
   <select id="sort">
     <option value="popular">人気順</option>
     <option value="new">新着順</option>
-    <option value="comments">コメント多い順</option>
+    <option value="comments">コメント順</option>
   </select>
-  <button id="btn">検索</button>
+  <button id="btn" class="primary">検索</button>
+  <label style="display:flex;align-items:center;gap:6px;">
+    <input type="checkbox" id="demoToggle">
+    <span class="muted">デモ再生</span>
+  </label>
 </div>
 
 <div id="err"></div>
-
 <div id="results" class="grid"></div>
 
 <div id="player-wrap">
@@ -51,120 +93,96 @@
 </div>
 
 <script>
-  const qEl = document.getElementById('q');
-  const sEl = document.getElementById('sort');
-  const btn = document.getElementById('btn');
-  const results = document.getElementById('results');
-  const err = document.getElementById('err');
-  const mount = document.getElementById('mount');
-  const links = document.getElementById('links');
+/* === Theme === */
+const root = document.documentElement;
+const themeBtn = document.getElementById("themeBtn");
+const saved = localStorage.getItem("theme");
+applyTheme(saved||"auto");
+function applyTheme(mode){
+  root.classList.remove("light","dark");
+  if(mode==="dark"){root.classList.add("dark");themeBtn.textContent="☀️";}
+  else if(mode==="light"){root.classList.add("light");themeBtn.textContent="🌙";}
+  else{themeBtn.textContent=matchMedia("(prefers-color-scheme:dark)").matches?"☀️":"🌙";}
+}
+themeBtn.onclick=()=>{
+  const cur = localStorage.getItem("theme")||"auto";
+  const next = cur==="auto"?"dark":cur==="dark"?"light":"auto";
+  localStorage.setItem("theme",next);
+  applyTheme(next);
+};
 
-  btn.addEventListener('click', () => doSearch());
-  qEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+/* === Search === */
+const q=document.getElementById("q"), s=document.getElementById("sort"), btn=document.getElementById("btn");
+const results=document.getElementById("results"), err=document.getElementById("err");
+btn.onclick=()=>search();
+q.onkeydown=e=>{if(e.key==="Enter")search();};
 
-  async function doSearch(offset = 0) {
-    try {
-      err.textContent = '';
-      results.innerHTML = '検索中…';
-      const q = qEl.value.trim();
-      if (!q) { results.innerHTML=''; return; }
-
-      const url = new URL('/api/search', location.origin);
-      url.searchParams.set('q', q);
-      url.searchParams.set('sort', sEl.value);
-      url.searchParams.set('offset', String(offset));
-      url.searchParams.set('limit', '24');
-
-      const r = await fetch(url);
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'search failed');
-
-      if (!j.items.length) { results.innerHTML = '<div>該当なし</div>'; return; }
-
-      results.innerHTML = j.items.map(v => `
-        <div class="card" onclick="play('${v.id}', '${encodeURIComponent(v.title)}')">
-          <img class="thumb" src="${v.thumb}" alt="">
-          <div class="meta">
-            <div>${v.title}</div>
-            <div>再生 ${Number(v.views||0).toLocaleString()} / コメ ${Number(v.comments||0).toLocaleString()}</div>
-          </div>
+async function search(){
+  const qv=q.value.trim(); if(!qv)return;
+  results.innerHTML="検索中…"; err.textContent="";
+  try{
+    const url=new URL("/api/search",location.origin);
+    url.searchParams.set("q",qv);
+    url.searchParams.set("sort",s.value);
+    url.searchParams.set("limit","24");
+    const r=await fetch(url); const j=await r.json();
+    if(!j.ok) throw new Error(j.error);
+    if(!j.items.length){results.innerHTML="該当なし";return;}
+    results.innerHTML=j.items.map(v=>`
+      <div class="card" onclick="play('${v.id}','${encodeURIComponent(v.title)}')">
+        <img class="thumb" src="${v.thumb}">
+        <div class="meta">
+          <div style="color:var(--fg)">${v.title}</div>
+          <div>再生 ${Number(v.views).toLocaleString()} / コメ ${Number(v.comments).toLocaleString()}</div>
         </div>
-      `).join('');
-    } catch (e) {
-      console.error(e);
-      err.textContent = e.message;
-      results.innerHTML = '';
-    }
+      </div>
+    `).join("");
+  }catch(e){err.textContent=e.message;results.innerHTML="";}
+}
+
+/* === Play (with DEMO fallback) === */
+const mount=document.getElementById("mount"), links=document.getElementById("links");
+window.play=async function(id,titleEnc=""){
+  const demo=document.getElementById("demoToggle").checked;
+  // デモモード → ローカル動画
+  if(demo){
+    mount.innerHTML=`<video src="/demo.mp4" controls style="width:100%;height:100%;background:#000"></video>`;
+    links.innerHTML=`デモ再生中`;
+    return;
   }
 
-  // --- 再生：script優先 → 失敗時は自動的に iframe に切替
-  window.play = async function(id, titleEnc='') {
-    try {
-      const r = await fetch(`/api/parse?q=${id}`);
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'parse failed');
+  try{
+    const r=await fetch(`/api/parse?q=${id}`); const j=await r.json();
+    if(!j.ok) throw new Error(j.error);
+    mount.innerHTML="";
 
-      mount.innerHTML = '';
-      links.innerHTML = '';
-
-      // script方式を試す
-      let usedScript = false;
-      try {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.type = 'application/javascript';
-          s.src = j.script; // https://embed.nicovideo.jp/watch/ID/script?w=1280&h=720
-          s.onload = () => resolve();
-          s.onerror = () => reject(new Error('script embed failed'));
-          mount.appendChild(s);
-          setTimeout(() => reject(new Error('script timeout')), 2500);
-        });
-        usedScript = true;
-      } catch (_) {
-        // iframeフォールバック
-        const iframe = document.createElement('iframe');
-        iframe.src = `https://embed.nicovideo.jp/watch/${j.id}?jsapi=1`;
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.border = '0';
-        iframe.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
-        iframe.referrerPolicy = 'no-referrer-when-downgrade';
-        mount.appendChild(iframe);
-      }
-
-      const title = decodeURIComponent(titleEnc || '');
-      links.innerHTML = `
-        ${title ? '再生中: ' + title : ''}<br>
-        <a href="${j.watch}" target="_blank" rel="noreferrer">ニコニコで開く</a>
-        / <a href="https://embed.nicovideo.jp/watch/${j.id}?jsapi=1" target="_blank" rel="noreferrer">埋め込みを別タブで開く</a>
-        / <a href="#" id="reload">プレイヤーを更新</a>
-      `;
-
-      // ワンクリック切替
-      document.getElementById('reload').onclick = (e) => {
-        e.preventDefault();
-        if (usedScript) {
-          mount.innerHTML = `
-            <iframe src="https://embed.nicovideo.jp/watch/${j.id}?jsapi=1"
-              style="width:100%;height:100%;border:0"
-              allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-              referrerpolicy="no-referrer-when-downgrade"
-              loading="lazy"></iframe>`;
-          usedScript = false;
-        } else {
-          mount.innerHTML = '';
-          const s = document.createElement('script');
-          s.src = j.script;
-          mount.appendChild(s);
-          usedScript = true;
-        }
-      };
-    } catch (e) {
-      console.error(e);
-      err.textContent = e.message;
+    let usedScript=false;
+    try{
+      await new Promise((res,rej)=>{
+        const s=document.createElement("script");
+        s.src=j.script; s.onload=res; s.onerror=()=>rej(0);
+        mount.appendChild(s);
+        setTimeout(()=>rej(0),2000);
+      });
+      usedScript=true;
+    }catch{
+      const f=document.createElement("iframe");
+      f.src=`https://embed.nicovideo.jp/watch/${j.id}?jsapi=1`;
+      f.style=`width:100%;height:100%;border:0`;
+      f.allow="autoplay; fullscreen; picture-in-picture";
+      f.referrerPolicy="no-referrer-when-downgrade";
+      mount.innerHTML=""; mount.appendChild(f);
     }
-  };
-</script>
 
+    const title=decodeURIComponent(titleEnc);
+    links.innerHTML=`再生中: ${title}<br><a href="${j.watch}" target="_blank">ニコニコで開く</a>`;
+
+  }catch(e){
+    // 最終フォールバック → ローカル動画
+    mount.innerHTML=`<video src="/demo.mp4" controls style="width:100%;height:100%;background:#000"></video>`;
+    links.innerHTML=`エラーが発生したためデモ再生に切替えました`;
+  }
+};
+</script>
 </body>
 </html>
